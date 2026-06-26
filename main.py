@@ -8,7 +8,6 @@ def hello():
 
 from fastapi import FastAPI, HTTPException
 import httpx
-
 @app.get("/odds/simple-distortion")
 async def simple_distortion(race_id: str, before: int, after: int):
     # ダミーのオッズ取得関数
