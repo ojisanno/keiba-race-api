@@ -8,7 +8,16 @@ app = FastAPI()
 # 本物のオッズ取得（netkeiba スクレイピング）
 # ============================================
 async def fetch_odds(race_id: str):
-    url = f"https://race.netkeiba.com/race/odds.html?race_id={race_id}"
+    """
+    netkeiba のレースページから
+    ・馬番
+    ・馬名
+    ・単勝オッズ
+    ・人気順（pop）
+    を取得する
+    """
+
+    url = f"https://race.netkeiba.com/race/result.html?race_id={race_id}"
 
     async with httpx.AsyncClient() as client:
         r = await client.get(url, timeout=10.0)
@@ -17,24 +26,31 @@ async def fetch_odds(race_id: str):
     soup = BeautifulSoup(r.text, "lxml")
 
     horses = []
-    rows = soup.select(".OddsTbody tr")
+
+    # レース結果テーブル（人気・オッズが入っている）
+    rows = soup.select(".RaceTableArea .RaceTable01 tr")
 
     for row in rows:
-        num = row.select_one(".Waku span")
-        name = row.select_one(".HorseName a")
-        odds = row.select_one(".Odds")
+        cols = row.find_all("td")
+        if len(cols) < 7:
+            continue
 
-        if not (num and name and odds):
+        try:
+            number = int(cols[1].text.strip())       # 馬番
+            name = cols[3].text.strip()              # 馬名
+            pop = int(cols[6].text.strip())          # 人気
+            odds = float(cols[5].text.strip())       # 単勝オッズ
+        except:
             continue
 
         horses.append({
-            "number": int(num.text.strip()),
-            "name": name.text.strip(),
-            "odds": float(odds.text.strip()),
+            "number": number,
+            "name": name,
+            "odds": odds,
+            "pop": pop
         })
 
     return {"horses": horses}
-
 
 # ============================================
 # 歪み判定API（本物のオッズ取得版）
