@@ -1,6 +1,40 @@
 from fastapi import FastAPI
+import httpx
+from bs4 import BeautifulSoup
 
 app = FastAPI()
+async def fetch_odds(race_id: str):
+    """
+    netkeiba の単勝オッズをスクレイピングして取得する
+    race_id 例: 202406030811
+    """
+
+    url = f"https://race.netkeiba.com/race/odds.html?race_id={race_id}"
+
+    async with httpx.AsyncClient() as client:
+        r = await client.get(url, timeout=10.0)
+        r.raise_for_status()
+
+    soup = BeautifulSoup(r.text, "lxml")
+
+    horses = []
+    rows = soup.select(".OddsTbody tr")
+
+    for row in rows:
+        num = row.select_one(".Waku span")
+        name = row.select_one(".HorseName a")
+        odds = row.select_one(".Odds")
+
+        if not (num and name and odds):
+            continue
+
+        horses.append({
+            "number": int(num.text.strip()),
+            "name": name.text.strip(),
+            "odds": float(odds.text.strip()),
+        })
+
+    return {"horses": horses}
 
 @app.get("/hello")
 def hello():
