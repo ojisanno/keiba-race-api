@@ -68,9 +68,17 @@ async def fetch_odds(race_id: str):
 # ============================================
 # 歪み判定API（本物のオッズ取得版）
 # ============================================
+def get_color(score: float):
+    if score >= 60:
+        return "#FF4D4D"   # 赤
+    elif score >= 30:
+        return "#FFC93C"   # 黄
+    else:
+        return "#4DA3FF"   # 青
+
+
 @app.get("/odds/simple-distortion")
 async def simple_distortion(race_id: str, before: int, after: int):
-    # before/after のタイミングでオッズ取得
     odds_before = await fetch_odds(race_id)
     odds_after = await fetch_odds(race_id)
 
@@ -84,7 +92,7 @@ async def simple_distortion(race_id: str, before: int, after: int):
         # 単勝変動率
         tan_rate = (ha["odds_tan"] - hb["odds_tan"]) / hb["odds_tan"]
 
-        # 複勝変動率（平均値で比較）
+        # 複勝変動率
         before_fuku = (hb["odds_fuku_min"] + hb["odds_fuku_max"]) / 2
         after_fuku  = (ha["odds_fuku_min"] + ha["odds_fuku_max"]) / 2
         fuku_rate = (after_fuku - before_fuku) / before_fuku
@@ -103,6 +111,9 @@ async def simple_distortion(race_id: str, before: int, after: int):
         else:
             label = "通常"
 
+        # 色分け
+        color = get_color(score)
+
         result.append({
             "number": hb["number"],
             "name": hb["name"],
@@ -116,7 +127,8 @@ async def simple_distortion(race_id: str, before: int, after: int):
             "fuku_rate": round(fuku_rate, 3),
             "pop_change": pop_change,
             "score": round(score, 1),
-            "label": label
+            "label": label,
+            "color": color
         })
 
     return {
@@ -125,7 +137,6 @@ async def simple_distortion(race_id: str, before: int, after: int):
         "after_minutes": after,
         "horses": result
     }
-
 
 # ============================================
 # 動作確認用
