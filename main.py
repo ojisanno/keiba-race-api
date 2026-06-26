@@ -81,18 +81,24 @@ async def simple_distortion(race_id: str, before: int, after: int):
         if not ha:
             continue
 
-        # 変動率
-        change_rate = (ha["odds"] - hb["odds"]) / hb["odds"]
+        # 単勝変動率
+        tan_rate = (ha["odds_tan"] - hb["odds_tan"]) / hb["odds_tan"]
 
-        # 人気変動（netkeibaは人気順が取れないので 0固定）
-        pop_change = 0
+        # 複勝変動率（平均値で比較）
+        before_fuku = (hb["odds_fuku_min"] + hb["odds_fuku_max"]) / 2
+        after_fuku  = (ha["odds_fuku_min"] + ha["odds_fuku_max"]) / 2
+        fuku_rate = (after_fuku - before_fuku) / before_fuku
 
-        # 歪みスコア
-        distortion_score = abs(change_rate) * 100 + abs(pop_change) * 10
+        # 人気変動
+        pop_change = ha["pop"] - hb["pop"]
 
-        if distortion_score >= 40:
+        # 総合スコア
+        score = abs(tan_rate) * 100 + abs(fuku_rate) * 50 + abs(pop_change) * 10
+
+        # ラベル
+        if score >= 60:
             label = "強い歪み"
-        elif distortion_score >= 20:
+        elif score >= 30:
             label = "やや歪み"
         else:
             label = "通常"
@@ -100,10 +106,16 @@ async def simple_distortion(race_id: str, before: int, after: int):
         result.append({
             "number": hb["number"],
             "name": hb["name"],
-            "odds_before": hb["odds"],
-            "odds_after": ha["odds"],
-            "odds_change_rate": round(change_rate, 3),
-            "distortion_score": round(distortion_score, 1),
+            "tan_before": hb["odds_tan"],
+            "tan_after": ha["odds_tan"],
+            "fuku_before": before_fuku,
+            "fuku_after": after_fuku,
+            "pop_before": hb["pop"],
+            "pop_after": ha["pop"],
+            "tan_rate": round(tan_rate, 3),
+            "fuku_rate": round(fuku_rate, 3),
+            "pop_change": pop_change,
+            "score": round(score, 1),
             "label": label
         })
 
