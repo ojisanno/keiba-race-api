@@ -13,6 +13,7 @@ async def fetch_odds(race_id: str):
     ・馬番
     ・馬名
     ・単勝オッズ
+    ・複勝オッズ（min/max）
     ・人気順（pop）
     を取得する
     """
@@ -32,21 +33,33 @@ async def fetch_odds(race_id: str):
 
     for row in rows:
         cols = row.find_all("td")
-        if len(cols) < 7:
+        if len(cols) < 10:
             continue
 
         try:
             number = int(cols[1].text.strip())       # 馬番
             name = cols[3].text.strip()              # 馬名
+            odds_tan = float(cols[5].text.strip())   # 単勝オッズ
             pop = int(cols[6].text.strip())          # 人気
-            odds = float(cols[5].text.strip())       # 単勝オッズ
+
+            # 複勝オッズ（例: "2.1 - 3.4"）
+            fuku_text = cols[7].text.strip()
+            if "-" in fuku_text:
+                fuku_min, fuku_max = fuku_text.split("-")
+                fuku_min = float(fuku_min.strip())
+                fuku_max = float(fuku_max.strip())
+            else:
+                fuku_min = fuku_max = float(fuku_text)
+
         except:
             continue
 
         horses.append({
             "number": number,
             "name": name,
-            "odds": odds,
+            "odds_tan": odds_tan,
+            "odds_fuku_min": fuku_min,
+            "odds_fuku_max": fuku_max,
             "pop": pop
         })
 
