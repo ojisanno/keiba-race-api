@@ -144,3 +144,21 @@ async def simple_distortion(race_id: str, before: int, after: int):
 @app.get("/hello")
 async def hello():
     return {"message": "クラウドでPythonが動いています"}
+@app.get("/races/today")
+def get_today_races():
+    races = [
+        {"raceNumber": 1, "name": "2歳未勝利"},
+        {"raceNumber": 2, "name": "3歳未勝利"},
+        ...
+    ]
+    return {"races": races}
+
+@app.get("/races/past")
+def get_past_races(course: str):
+    print("過去レース取得:", course)
+    races = [
+        {"raceNumber": 1, "name": "2歳未勝利"},
+        {"raceNumber": 2, "name": "3歳未勝利"},
+        ...
+    ]
+    return {"races": races}
