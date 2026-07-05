@@ -1,23 +1,73 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 import httpx
 from bs4 import BeautifulSoup
 
 app = FastAPI()
 
 # ============================================
+# CORS（Flutter からアクセスできるように）
+# ============================================
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ============================================
+# 今日のレース一覧（固定データ）
+# ============================================
+@app.get("/races/today")
+def get_today_races(course: str):
+    print("今日のレース取得:", course)
+
+    races = [
+        {"raceNumber": 1, "name": "2歳未勝利"},
+        {"raceNumber": 2, "name": "3歳未勝利"},
+        {"raceNumber": 3, "name": "障害オープン"},
+        {"raceNumber": 4, "name": "1勝クラス"},
+        {"raceNumber": 5, "name": "2勝クラス"},
+        {"raceNumber": 6, "name": "3勝クラス"},
+        {"raceNumber": 7, "name": "オープン"},
+        {"raceNumber": 8, "name": "特別戦"},
+        {"raceNumber": 9, "name": "G3"},
+        {"raceNumber": 10, "name": "G2"},
+        {"raceNumber": 11, "name": "G1"},
+        {"raceNumber": 12, "name": "最終レース"},
+    ]
+
+    return {"races": races}
+
+# ============================================
+# 過去レース一覧（固定データ）
+# ============================================
+@app.get("/races/past")
+def get_past_races(course: str):
+    print("過去レース取得:", course)
+
+    races = [
+        {"raceNumber": 1, "name": "2歳未勝利"},
+        {"raceNumber": 2, "name": "3歳未勝利"},
+        {"raceNumber": 3, "name": "障害オープン"},
+        {"raceNumber": 4, "name": "1勝クラス"},
+        {"raceNumber": 5, "name": "2勝クラス"},
+        {"raceNumber": 6, "name": "3勝クラス"},
+        {"raceNumber": 7, "name": "オープン"},
+        {"raceNumber": 8, "name": "特別戦"},
+        {"raceNumber": 9, "name": "G3"},
+        {"raceNumber": 10, "name": "G2"},
+        {"raceNumber": 11, "name": "G1"},
+        {"raceNumber": 12, "name": "最終レース"},
+    ]
+
+    return {"races": races}
+
+# ============================================
 # 本物のオッズ取得（netkeiba スクレイピング）
 # ============================================
 async def fetch_odds(race_id: str):
-    """
-    netkeiba のレースページから
-    ・馬番
-    ・馬名
-    ・単勝オッズ
-    ・複勝オッズ（min/max）
-    ・人気順（pop）
-    を取得する
-    """
-
     url = f"https://race.netkeiba.com/race/result.html?race_id={race_id}"
 
     async with httpx.AsyncClient() as client:
@@ -27,8 +77,6 @@ async def fetch_odds(race_id: str):
     soup = BeautifulSoup(r.text, "lxml")
 
     horses = []
-
-    # レース結果テーブル（人気・オッズが入っている）
     rows = soup.select(".RaceTableArea .RaceTable01 tr")
 
     for row in rows:
@@ -37,12 +85,11 @@ async def fetch_odds(race_id: str):
             continue
 
         try:
-            number = int(cols[1].text.strip())       # 馬番
-            name = cols[3].text.strip()              # 馬名
-            odds_tan = float(cols[5].text.strip())   # 単勝オッズ
-            pop = int(cols[6].text.strip())          # 人気
+            number = int(cols[1].text.strip())
+            name = cols[3].text.strip()
+            odds_tan = float(cols[5].text.strip())
+            pop = int(cols[6].text.strip())
 
-            # 複勝オッズ（例: "2.1 - 3.4"）
             fuku_text = cols[7].text.strip()
             if "-" in fuku_text:
                 fuku_min, fuku_max = fuku_text.split("-")
@@ -70,12 +117,11 @@ async def fetch_odds(race_id: str):
 # ============================================
 def get_color(score: float):
     if score >= 60:
-        return "#FF4D4D"   # 赤
+        return "#FF4D4D"
     elif score >= 30:
-        return "#FFC93C"   # 黄
+        return "#FFC93C"
     else:
-        return "#4DA3FF"   # 青
-
+        return "#4DA3FF"
 
 @app.get("/odds/simple-distortion")
 async def simple_distortion(race_id: str, before: int, after: int):
@@ -89,21 +135,16 @@ async def simple_distortion(race_id: str, before: int, after: int):
         if not ha:
             continue
 
-        # 単勝変動率
         tan_rate = (ha["odds_tan"] - hb["odds_tan"]) / hb["odds_tan"]
 
-        # 複勝変動率
         before_fuku = (hb["odds_fuku_min"] + hb["odds_fuku_max"]) / 2
         after_fuku  = (ha["odds_fuku_min"] + ha["odds_fuku_max"]) / 2
         fuku_rate = (after_fuku - before_fuku) / before_fuku
 
-        # 人気変動
         pop_change = ha["pop"] - hb["pop"]
 
-        # 総合スコア
         score = abs(tan_rate) * 100 + abs(fuku_rate) * 50 + abs(pop_change) * 10
 
-        # ラベル
         if score >= 60:
             label = "強い歪み"
         elif score >= 30:
@@ -111,7 +152,6 @@ async def simple_distortion(race_id: str, before: int, after: int):
         else:
             label = "通常"
 
-        # 色分け
         color = get_color(score)
 
         result.append({
@@ -144,21 +184,3 @@ async def simple_distortion(race_id: str, before: int, after: int):
 @app.get("/hello")
 async def hello():
     return {"message": "クラウドでPythonが動いています"}
-@app.get("/races/today")
-def get_today_races():
-    races = [
-        {"raceNumber": 1, "name": "2歳未勝利"},
-        {"raceNumber": 2, "name": "3歳未勝利"},
-        ...
-    ]
-    return {"races": races}
-
-@app.get("/races/past")
-def get_past_races(course: str):
-    print("過去レース取得:", course)
-    races = [
-        {"raceNumber": 1, "name": "2歳未勝利"},
-        {"raceNumber": 2, "name": "3歳未勝利"},
-        ...
-    ]
-    return {"races": races}
