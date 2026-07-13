@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
 from bs4 import BeautifulSoup
+from datetime import datetime
 
 app = FastAPI()
 
@@ -17,9 +18,8 @@ app.add_middleware(
 )
 
 # ============================================
-# 今日のレース一覧（固定データ）
+# 開催場コード（JRA）
 # ============================================
-# 開催場コード（例）
 COURSE_CODE = {
     "札幌": "01",
     "函館": "02",
@@ -33,48 +33,72 @@ COURSE_CODE = {
     "小倉": "10",
 }
 
-# 今日の日付（固定 or 動的）
-TODAY = "20240713"  # ← とりあえず固定でOK（後で動的にできる）
+# ============================================
+# レース名（固定）
+# ============================================
+RACE_NAMES = {
+    1: "2歳未勝利",
+    2: "3歳未勝利",
+    3: "障害オープン",
+    4: "1勝クラス",
+    5: "2勝クラス",
+    6: "3勝クラス",
+    7: "オープン",
+    8: "特別戦",
+    9: "G3",
+    10: "G2",
+    11: "G1",
+    12: "最終レース",
+}
 
+# ============================================
+# 今日の日付（自動）
+# ============================================
+def get_today_str():
+    return datetime.now().strftime("%Y%m%d")
+
+# ============================================
+# raceId を生成する関数
+# ============================================
+def make_race_id(date_str: str, course: str, race_number: int):
+    course_code = COURSE_CODE.get(course, "00")
+    return f"{date_str}{course_code}{race_number:02d}"
+
+# ============================================
+# 今日のレース一覧（自動日付＋raceId付き）
+# ============================================
 @app.get("/races/today")
 def get_today_races(course: str):
     print("今日のレース取得:", course)
 
-    course_code = COURSE_CODE.get(course, "00")
+    today = get_today_str()
 
     races = []
     for i in range(1, 13):
-        race_id = f"{TODAY}{course_code}{i:02d}"  # ★ raceId を生成
+        race_id = make_race_id(today, course, i)
         races.append({
             "raceNumber": i,
-            "name": TODAY_RACE_NAMES[i],  # あなたの元の名前リスト
-            "raceId": race_id,            # ★ 追加
+            "name": RACE_NAMES[i],
+            "raceId": race_id,
         })
 
     return {"races": races}
 
-
 # ============================================
-# 過去レース一覧（固定データ）
+# 過去レース一覧（date を指定）
 # ============================================
 @app.get("/races/past")
-def get_past_races(course: str):
-    print("過去レース取得:", course)
+def get_past_races(course: str, date: str):
+    print("過去レース取得:", course, date)
 
-    races = [
-        {"raceNumber": 1, "name": "2歳未勝利"},
-        {"raceNumber": 2, "name": "3歳未勝利"},
-        {"raceNumber": 3, "name": "障害オープン"},
-        {"raceNumber": 4, "name": "1勝クラス"},
-        {"raceNumber": 5, "name": "2勝クラス"},
-        {"raceNumber": 6, "name": "3勝クラス"},
-        {"raceNumber": 7, "name": "オープン"},
-        {"raceNumber": 8, "name": "特別戦"},
-        {"raceNumber": 9, "name": "G3"},
-        {"raceNumber": 10, "name": "G2"},
-        {"raceNumber": 11, "name": "G1"},
-        {"raceNumber": 12, "name": "最終レース"},
-    ]
+    races = []
+    for i in range(1, 13):
+        race_id = make_race_id(date, course, i)
+        races.append({
+            "raceNumber": i,
+            "name": RACE_NAMES[i],
+            "raceId": race_id,
+        })
 
     return {"races": races}
 
@@ -127,7 +151,7 @@ async def fetch_odds(race_id: str):
     return {"horses": horses}
 
 # ============================================
-# 歪み判定API（本物のオッズ取得版）
+# 歪み判定API
 # ============================================
 def get_color(score: float):
     if score >= 60:
