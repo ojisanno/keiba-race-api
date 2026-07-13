@@ -19,26 +19,40 @@ app.add_middleware(
 # ============================================
 # 今日のレース一覧（固定データ）
 # ============================================
+# 開催場コード（例）
+COURSE_CODE = {
+    "札幌": "01",
+    "函館": "02",
+    "福島": "03",
+    "新潟": "04",
+    "東京": "05",
+    "中山": "06",
+    "中京": "07",
+    "京都": "08",
+    "阪神": "09",
+    "小倉": "10",
+}
+
+# 今日の日付（固定 or 動的）
+TODAY = "20240713"  # ← とりあえず固定でOK（後で動的にできる）
+
 @app.get("/races/today")
 def get_today_races(course: str):
     print("今日のレース取得:", course)
 
-    races = [
-        {"raceNumber": 1, "name": "2歳未勝利"},
-        {"raceNumber": 2, "name": "3歳未勝利"},
-        {"raceNumber": 3, "name": "障害オープン"},
-        {"raceNumber": 4, "name": "1勝クラス"},
-        {"raceNumber": 5, "name": "2勝クラス"},
-        {"raceNumber": 6, "name": "3勝クラス"},
-        {"raceNumber": 7, "name": "オープン"},
-        {"raceNumber": 8, "name": "特別戦"},
-        {"raceNumber": 9, "name": "G3"},
-        {"raceNumber": 10, "name": "G2"},
-        {"raceNumber": 11, "name": "G1"},
-        {"raceNumber": 12, "name": "最終レース"},
-    ]
+    course_code = COURSE_CODE.get(course, "00")
+
+    races = []
+    for i in range(1, 13):
+        race_id = f"{TODAY}{course_code}{i:02d}"  # ★ raceId を生成
+        races.append({
+            "raceNumber": i,
+            "name": TODAY_RACE_NAMES[i],  # あなたの元の名前リスト
+            "raceId": race_id,            # ★ 追加
+        })
 
     return {"races": races}
+
 
 # ============================================
 # 過去レース一覧（固定データ）
